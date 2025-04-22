@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waste Classification</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      #videoContainer {
+        position: relative;
+        width: 80%;
+        max-width: 500px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        background-color: #000; /* Black background for video area */
+      }
+      video {
+        display: block; /* Remove extra space below video */
+        width: 100%;
+        height: auto;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        margin-bottom: 15px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        background-color: #fff;
+        border-radius: 5px;
+        min-width: 200px;
+        text-align: center;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      #result.loading {
+        color: #888;
+      }
+      /* Hidden canvas used for capturing the frame */
+      canvas {
+        display: none;
+      }
+      #error {
+        color: red;
+        margin-top: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Real-time Waste Classification</h1>
+    <p>Point your camera at a waste item and click 'Classify'.</p>
+
+    <div id="videoContainer">
+      <video id="video" playsinline autoplay muted></video>
+    </div>
+    <button id="captureBtn" disabled>Loading Camera...</button>
+    <canvas id="canvas"></canvas>
+    <div id="result">Prediction will appear here</div>
+    <div id="error"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

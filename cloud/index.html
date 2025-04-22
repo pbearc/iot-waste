@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Waste Classifier (Cloud)</title>
+    <style>
+      /* Basic styling for mobile view */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 15px;
+        margin: 0;
+        background-color: #f0f2f5; /* Light grey background */
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+      h1 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 1.6em;
+        color: #333;
+        text-align: center;
+      }
+      #videoContainer {
+        position: relative;
+        width: 95%;
+        max-width: 450px;
+        margin-bottom: 15px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        background-color: #222;
+        overflow: hidden;
+        aspect-ratio: 1 / 1;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      button#captureBtn {
+        /* Style capture button specifically */
+        width: 85%;
+        max-width: 350px;
+        padding: 16px 20px;
+        font-size: 1.15em;
+        font-weight: bold;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 25px; /* Rounded */
+        margin-bottom: 20px;
+        transition: background-color 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button#captureBtn:hover {
+        background-color: #0056b3;
+      }
+      button#captureBtn:disabled {
+        background-color: #a0a0a0;
+        cursor: not-allowed;
+      }
+      #result {
+        margin-top: 10px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        background-color: #fff;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        font-size: 1.2em;
+        font-weight: 600; /* Slightly bolder */
+        min-height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        color: #333;
+      }
+      #result.loading {
+        color: #666;
+        font-style: italic;
+      }
+      /* Hidden canvas */
+      canvas {
+        display: none;
+      }
+      #error {
+        color: #dc3545; /* Bootstrap danger red */
+        margin-top: 15px;
+        font-weight: bold;
+        text-align: center;
+        width: 90%;
+        max-width: 400px;
+        background-color: #f8d7da; /* Light red background */
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 5px;
+        display: none; /* Hidden initially */
+      }
+      /* Feedback Section Styles */
+      #feedbackSection {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ced4da;
+        background-color: #ffffff;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        display: none; /* Hidden by default */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      #feedbackSection p {
+        margin-bottom: 10px;
+        font-weight: 500;
+      }
+      #feedbackSection button {
+        /* Style feedback buttons */
+        width: auto;
+        padding: 8px 18px;
+        font-size: 0.95em;
+        margin: 5px;
+        border-radius: 20px; /* Rounded */
+        cursor: pointer;
+        border: 1px solid #ccc;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+      button#feedbackYesBtn {
+        background-color: #d4edda; /* Light green */
+        border-color: #c3e6cb;
+        color: #155724;
+      }
+      button#feedbackYesBtn:hover {
+        background-color: #c3e6cb;
+      }
+      button#feedbackNoBtn {
+        background-color: #f8d7da; /* Light red */
+        border-color: #f5c6cb;
+        color: #721c24;
+      }
+      button#feedbackNoBtn:hover {
+        background-color: #f5c6cb;
+      }
+      #correctionDetails {
+        margin-top: 15px;
+        display: none; /* Hidden until 'No' is clicked */
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+      }
+      #correctionDetails label {
+        margin-right: 5px;
+        font-weight: 500;
+      }
+      #correctLabelSelect {
+        padding: 8px 12px;
+        margin: 5px;
+        font-size: 0.95em;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+      }
+      button#submitCorrectionBtn {
+        background-color: #6c757d; /* Grey */
+        color: white;
+        border: none;
+      }
+      button#submitCorrectionBtn:hover {
+        background-color: #5a6268;
+      }
+      button#submitCorrectionBtn:disabled {
+        background-color: #adb5bd;
+        cursor: not-allowed;
+      }
+      #feedbackMessage {
+        margin-top: 12px;
+        font-style: italic;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Waste Classifier (Cloud)</h1>
+
+    <div id="videoContainer">
+      <video id="video" playsinline autoplay muted></video>
+    </div>
+    <button id="captureBtn" disabled>Loading Camera...</button>
+    <canvas id="canvas"></canvas>
+    <div id="result">Prediction will appear here</div>
+    <div id="error"></div>
+    <div id="feedbackSection">
+      <p>Was this prediction correct?</p>
+      <button id="feedbackYesBtn">Yes</button>
+      <button id="feedbackNoBtn">No</button>
+      <div id="correctionDetails">
+        <label for="correctLabelSelect">Correct Label:</label>
+        <select id="correctLabelSelect"></select>
+        <button id="submitCorrectionBtn" disabled>Submit Correction</button>
+      </div>
+      <div id="feedbackMessage"></div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
