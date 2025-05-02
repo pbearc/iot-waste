@@ -1,25 +1,24 @@
 import os
+import shutil 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 # Import VGG16 preprocessing, consistent with app.py
 from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
-import glob # To find specific files after processing
+import glob 
 
-# --- Configuration ---
-MODEL_PATH = 'model.hdf5' # Use the same model file name as app.py
+MODEL_PATH = 'model.hdf5' 
+BACKUP_MODEL_PATH = 'model-backup.hdf5' 
+TEMP_MODEL_PATH = 'model-updated.hdf5' 
 CORRECTIONS_FOLDER = 'user_corrections'
-PROCESSED_FOLDER = 'processed_corrections' # Folder to move processed files
-IMG_WIDTH, IMG_HEIGHT = 224, 224 # MUST match app.py and model input size
-BATCH_SIZE = 8 # Small batch size for fine-tuning
-EPOCHS = 5 # Number of fine-tuning epochs
-MIN_SAMPLES_FOR_RETRAIN = 1 # Minimum samples needed to trigger retraining
-
-# IMPORTANT: MUST MATCH CLASS_LABELS in app.py EXACTLY (lowercase)
+PROCESSED_FOLDER = 'processed_corrections' 
+IMG_WIDTH, IMG_HEIGHT = 224, 224 
+BATCH_SIZE = 8 
+EPOCHS = 5 
+MIN_SAMPLES_FOR_RETRAIN = 1 
 CLASS_LABELS = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
-# Create processed folder if it doesn't exist
 if not os.path.exists(PROCESSED_FOLDER):
     os.makedirs(PROCESSED_FOLDER)
 
@@ -40,7 +39,6 @@ def load_corrections(folder_path):
     """Loads correction images and labels from the specified folder."""
     images = []
     labels = []
-    # Create a mapping from lowercase label name to integer index
     class_indices = {name: i for i, name in enumerate(CLASS_LABELS)}
 
     print(f"Searching for corrections in {folder_path}...")
@@ -56,7 +54,6 @@ def load_corrections(folder_path):
     for filepath in files_to_process:
         filename = os.path.basename(filepath)
         try:
-            # Assuming filename format is "label_timestamp.jpg" and label is lowercase
             label_name = filename.split('_')[0]
             if label_name in class_indices:
                 label_index = class_indices[label_name]
@@ -70,13 +67,9 @@ def load_corrections(folder_path):
                      print(f"Skipping {filename} due to processing error.")
             else:
                 print(f"Warning: Unknown label '{label_name}' derived from filename {filename}. Skipping.")
-                # Optionally move unknown label files?
-                # shutil.move(filepath, os.path.join(PROCESSED_FOLDER, filename))
 
         except Exception as e:
             print(f"Error processing filename {filename}: {e}")
-            # Optionally move error files?
-            # shutil.move(filepath, os.path.join(PROCESSED_FOLDER, filename))
 
     if not images:
         print("No valid correction samples loaded.")
@@ -93,7 +86,7 @@ def move_processed_files(file_list, destination_folder):
         try:
             filename = os.path.basename(filepath)
             destination_path = os.path.join(destination_folder, filename)
-            os.rename(filepath, destination_path) # Use rename for speed/atomicity if on same filesystem
+            os.rename(filepath, destination_path) 
             moved_count += 1
         except Exception as e:
             print(f"Error moving file {filepath}: {e}")
@@ -108,19 +101,20 @@ if __name__ == "__main__":
 
     if X_new is None or y_new is None or len(X_new) < MIN_SAMPLES_FOR_RETRAIN:
         print(f"Not enough valid correction data found ({len(X_new) if X_new is not None else 0} samples < {MIN_SAMPLES_FOR_RETRAIN} required). Exiting.")
-        # Optionally move processed files even if not enough for retraining?
         if processed_file_list:
              move_processed_files(processed_file_list, PROCESSED_FOLDER)
         exit()
 
-    # Convert labels to correct dtype if needed (sparse_categorical_crossentropy expects int)
     y_new = y_new.astype(np.int32)
 
-    # 2. Load current model (ensure it compiles for training)
+    # 2. Check if model path is a directory
+    if os.path.isdir(MODEL_PATH):
+        print(f"WARNING: {MODEL_PATH} is a directory, not a file. Using model-updated.hdf5 instead.")
+        MODEL_PATH = 'model-updated.hdf5'  # Use different path
+    
+    # 3. Load current model (ensure it compiles for training)
     print(f"Loading current model from {MODEL_PATH}...")
     try:
-        # Attempt to load the model with its original optimizer and state
-        # This is preferred for fine-tuning
         model = load_model(MODEL_PATH)
         print("Model loaded successfully (hopefully with original compile state).")
 
@@ -128,9 +122,6 @@ if __name__ == "__main__":
         print(f"Error loading model compiled: {e}. Trying compile=False and re-compiling...")
         try:
              model = load_model(MODEL_PATH, compile=False)
-             # Re-compile needed for fine-tuning
-             # Use an optimizer and loss compatible with your training
-             # Adam and sparse_categorical_crossentropy are common
              model.compile(optimizer='adam',
                            loss='sparse_categorical_crossentropy',
                            metrics=['accuracy'])
@@ -142,8 +133,7 @@ if __name__ == "__main__":
                  move_processed_files(processed_file_list, PROCESSED_FOLDER)
              exit()
 
-
-    # 3. Fine-tune the model
+    # 4. Fine-tune the model
     print(f"Fine-tuning model with {len(X_new)} samples for {EPOCHS} epochs...")
     # Shuffle data for better training
     indices = np.arange(X_new.shape[0])
@@ -154,29 +144,26 @@ if __name__ == "__main__":
     # Use the entire batch of new data for fine-tuning
     history = model.fit(X_new_shuffled, y_new_shuffled, epochs=EPOCHS, batch_size=BATCH_SIZE)
     print("Fine-tuning complete.")
-    # You could add logic here to check if accuracy improved before saving
 
-    # 4. Save the updated model, overwriting the old one (carefully!)
-    print(f"Saving updated model to {MODEL_PATH}...")
-    # Saving directly over the file can be risky if it fails mid-save.
-    # A safer approach is to save to a temp file and then rename.
-    TEMP_MODEL_PATH = MODEL_PATH + '.temp'
+    # 5. Save the updated model
+    print(f"Saving updated model to {TEMP_MODEL_PATH}...")
     try:
+        # First, create a backup if MODEL_PATH exists and is a file
+        if os.path.isfile(MODEL_PATH):
+            print(f"Creating backup of existing model to {BACKUP_MODEL_PATH}")
+            shutil.copy2(MODEL_PATH, BACKUP_MODEL_PATH)
+        
+        # Save the updated model to the temporary path
         model.save(TEMP_MODEL_PATH)
-        # If save succeeds, replace the old model file
-        if os.path.exists(MODEL_PATH):
-            os.remove(MODEL_PATH)
-        os.rename(TEMP_MODEL_PATH, MODEL_PATH)
-        print("Model saved and replaced successfully.")
-
-        # 5. Move processed correction files
+        print(f"Model saved to {TEMP_MODEL_PATH} successfully.")
+        
+        # 6. Move processed correction files
         move_processed_files(processed_file_list, PROCESSED_FOLDER)
 
     except Exception as e:
-        print(f"Error saving or replacing updated model or moving files: {e}")
-        # Clean up temp file if it exists
-        if os.path.exists(TEMP_MODEL_PATH):
-             os.remove(TEMP_MODEL_PATH)
-
+        print(f"Error saving model or moving files: {e}")
+        # Clean up temp file if it exists and is a file
+        if os.path.isfile(TEMP_MODEL_PATH):
+            os.remove(TEMP_MODEL_PATH)
 
     print("Retraining script finished.")

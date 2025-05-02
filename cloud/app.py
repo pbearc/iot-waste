@@ -19,24 +19,19 @@ IMAGE_WIDTH = 224             # Match training image size
 IMAGE_HEIGHT = 224            # Match training image size
 UPLOAD_FOLDER = 'user_corrections' # Folder for online update images
 
-# IMPORTANT: Verify this list and order against your training output!
 CLASS_LABELS = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
-# Initialize Flask application
 app = Flask(__name__)
-CORS(app) # Enable CORS for requests from browser
+CORS(app) 
 
-# Create upload folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     try:
         os.makedirs(UPLOAD_FOLDER)
         print(f"Created directory: {UPLOAD_FOLDER}")
     except OSError as e:
         print(f"Error creating directory {UPLOAD_FOLDER}: {e}")
-        # Decide if this is fatal or not - for now, continue
 
 # --- Load Model ---
-# Global variable to hold the loaded model
 loaded_model = None
 
 def load_app_model():
@@ -45,17 +40,14 @@ def load_app_model():
     if loaded_model is None: # Load only once
         try:
             print(f"Loading model '{MODEL_FILENAME}'...")
-            # Load model without compiling optimizer state (often sufficient for inference)
             loaded_model = load_model(MODEL_FILENAME, compile=False)
             print(f"Successfully loaded model '{MODEL_FILENAME}'.")
-            # Perform a dummy prediction to potentially finalize model setup if needed
             dummy_input = np.zeros((1, IMAGE_HEIGHT, IMAGE_WIDTH, 3))
             _ = loaded_model.predict(dummy_input)
             print("Model warm-up prediction complete.")
         except Exception as e:
             print(f"FATAL: Error loading model '{MODEL_FILENAME}': {e}")
             traceback.print_exc()
-            # Keep loaded_model as None
             loaded_model = None
     return loaded_model
 
@@ -74,7 +66,7 @@ def preprocess_image_data(image_data):
         image_batch = np.expand_dims(image_array, axis=0)
         # Apply VGG16 specific preprocessing
         processed_batch = vgg16_preprocess_input(image_batch)
-        # print(f"Preprocessed image shape: {processed_batch.shape}") # Debug
+        # print(f"Preprocessed image shape: {processed_batch.shape}")
         return processed_batch
     except Exception as e:
         print(f"Error during image preprocessing: {e}")
@@ -123,7 +115,6 @@ def predict():
             return jsonify({
                 'prediction': predicted_class,
                 'confidence': f"{confidence:.2f}"
-                # Note: Sending image back isn't strictly needed if JS stores it
             })
         else:
              print(f"Error: Prediction index {predicted_index} out of bounds (Num classes: {len(CLASS_LABELS)})")
@@ -180,13 +171,9 @@ def submit_correction():
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    # Load the model when the script starts (or when first worker starts if using Gunicorn)
     load_app_model()
     print("Starting Flask server via app.run() (for testing only)...")
-    # This part is typically NOT run when using Gunicorn
     app.run(host='0.0.0.0', port=5000, debug=False)
 else:
-    # This block runs when imported by Gunicorn
-    # Ensure model is loaded when workers start
     load_app_model()
     print("Flask app initialized for Gunicorn.")

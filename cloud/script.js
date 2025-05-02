@@ -17,12 +17,10 @@ const feedbackMessage = document.getElementById("feedbackMessage");
 
 // --- Configuration ---
 const CLOUD_VM_IP = "34.124.177.124";
-// !!! ------------------------------------------------------- !!!
 const CLOUD_API_BASE_URL = `http://${CLOUD_VM_IP}:5000`;
 const PREDICT_URL = `${CLOUD_API_BASE_URL}/predict`;
 const SUBMIT_CORRECTION_URL = `${CLOUD_API_BASE_URL}/submit_correction`;
 
-// IMPORTANT: MUST MATCH TRAINING ORDER AND app.py
 const CLASS_LABELS = [
   "cardboard",
   "glass",
@@ -32,13 +30,12 @@ const CLASS_LABELS = [
   "trash",
 ];
 
-const MODEL_INPUT_WIDTH = 224; // Standard size for many image classification models
-const MODEL_INPUT_HEIGHT = 224; // Typically square for classification models
-// -------------------------------------------------
+const MODEL_INPUT_WIDTH = 224;
+const MODEL_INPUT_HEIGHT = 224;
 
 // --- State Variables ---
-let stream = null; // Holds the camera stream
-let currentImageDataUrl = null; // Stores the most recently captured image base64 data
+let stream = null;
+let currentImageDataUrl = null;
 
 // --- Utility Functions ---
 
@@ -171,7 +168,7 @@ async function captureAndPredict() {
   feedbackSection.style.display = "none";
   correctionDetails.style.display = "none";
   feedbackMessage.textContent = "";
-  submitCorrectionBtn.disabled = true; // Disable until needed
+  submitCorrectionBtn.disabled = true;
 
   try {
     // Ensure canvas size matches video frame size
@@ -179,11 +176,9 @@ async function captureAndPredict() {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Store the full resolution version for correction submissions
     const fullResImageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
     currentImageDataUrl = fullResImageDataUrl;
 
-    // Then resize to model's expected input size
     const modelReadyImageDataUrl = resizeImageForPrediction(canvas);
 
     console.log(`Sending normalized image to: ${PREDICT_URL}`);
@@ -191,7 +186,6 @@ async function captureAndPredict() {
       `Image dimensions - Original: ${canvas.width}x${canvas.height}, Model Input: ${MODEL_INPUT_WIDTH}x${MODEL_INPUT_HEIGHT}`
     );
 
-    // --- Send to Backend for Prediction ---
     const response = await fetch(PREDICT_URL, {
       method: "POST",
       headers: {
@@ -202,16 +196,14 @@ async function captureAndPredict() {
     });
 
     console.log(`Received response status: ${response.status}`);
-    resultDiv.classList.remove("loading"); // Remove loading state once response received
+    resultDiv.classList.remove("loading");
 
     if (!response.ok) {
       let errorDetail = `Prediction failed (HTTP ${response.status})`;
       try {
         const errorData = await response.json();
         errorDetail = errorData.error || errorDetail;
-      } catch {
-        /* Ignore if response body isn't JSON */
-      }
+      } catch {}
       throw new Error(errorDetail);
     }
 
@@ -224,16 +216,15 @@ async function captureAndPredict() {
       if (result.confidence) {
         resultDiv.textContent += ` (${result.confidence})`;
       }
-      feedbackSection.style.display = "block"; // Show feedback options
-      submitCorrectionBtn.disabled = false; // Enable submit button now image data exists
+      feedbackSection.style.display = "block";
+      submitCorrectionBtn.disabled = false;
     } else {
       throw new Error(result.error || "Received unexpected response format.");
     }
   } catch (err) {
     displayError(err.message || "An unknown error occurred during prediction.");
-    currentImageDataUrl = null; // Clear image data on error
+    currentImageDataUrl = null;
   } finally {
-    // Re-enable capture button if not disabled by camera error
     if (captureBtn.textContent !== "Camera Error") {
       captureBtn.disabled = false;
       captureBtn.textContent = "Classify Waste";
@@ -277,10 +268,10 @@ async function submitCorrection() {
       console.log("Correction submitted:", result.message);
       feedbackMessage.textContent = "Correction submitted. Thank you!";
       feedbackMessage.style.color = "green";
-      // Hide feedback section after a delay
+
       setTimeout(() => {
         feedbackSection.style.display = "none";
-        correctionDetails.style.display = "none"; // Ensure details are hidden too
+        correctionDetails.style.display = "none";
       }, 2500);
     } else {
       let errorDetail = `Correction submission failed (HTTP ${response.status})`;
@@ -317,16 +308,15 @@ feedbackYesBtn.addEventListener("click", () => {
   // Optionally hide the whole section after a delay
   setTimeout(() => {
     feedbackSection.style.display = "none";
-    // Re-enable for next prediction cycle? Or handled by captureAndPredict reset.
     feedbackYesBtn.disabled = false;
     feedbackNoBtn.disabled = false;
   }, 2000);
 });
 
 feedbackNoBtn.addEventListener("click", () => {
-  correctionDetails.style.display = "block"; // Show dropdown and submit button
-  feedbackMessage.textContent = ""; // Clear message
-  feedbackYesBtn.disabled = true; // Disable Yes/No once No is chosen
+  correctionDetails.style.display = "block";
+  feedbackMessage.textContent = "";
+  feedbackYesBtn.disabled = true;
   feedbackNoBtn.disabled = true;
 });
 
