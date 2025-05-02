@@ -33,35 +33,27 @@ const CLASS_LABELS = [
 const MODEL_INPUT_WIDTH = 224;
 const MODEL_INPUT_HEIGHT = 224;
 
-// --- State Variables ---
 let stream = null;
 let currentImageDataUrl = null;
 
-// --- Utility Functions ---
-
-// Add this new function to properly resize for prediction
 function resizeImageForPrediction(sourceCanvas) {
-  // Create a temporary canvas at the exact size needed by the model
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = MODEL_INPUT_WIDTH;
   tempCanvas.height = MODEL_INPUT_HEIGHT;
   const tempCtx = tempCanvas.getContext("2d");
 
-  // Draw the captured image, scaling to fit the model's expected size
   tempCtx.drawImage(sourceCanvas, 0, 0, MODEL_INPUT_WIDTH, MODEL_INPUT_HEIGHT);
 
-  // Return the properly sized image data URL
   return tempCanvas.toDataURL("image/jpeg", 0.9);
 }
 
 function displayError(message) {
   console.error("Error:", message);
   errorDiv.textContent = `Error: ${message}`;
-  errorDiv.style.display = "block"; // Show error div
+  errorDiv.style.display = "block";
   resultDiv.textContent = "Prediction Failed";
   resultDiv.classList.remove("loading");
-  feedbackSection.style.display = "none"; // Hide feedback on error
-  // Don't disable capture button permanently on non-camera errors
+  feedbackSection.style.display = "none";
   if (!message.toLowerCase().includes("camera")) {
     captureBtn.disabled = false;
     captureBtn.textContent = "Classify Waste";
@@ -77,7 +69,7 @@ function hideError() {
 }
 
 function populateLabelDropdown() {
-  correctLabelSelect.innerHTML = ""; // Clear existing options
+  correctLabelSelect.innerHTML = "";
   CLASS_LABELS.forEach((label) => {
     const option = document.createElement("option");
     option.value = label;

@@ -141,14 +141,12 @@ if __name__ == "__main__":
     X_new_shuffled = X_new[indices]
     y_new_shuffled = y_new[indices]
 
-    # Use the entire batch of new data for fine-tuning
     history = model.fit(X_new_shuffled, y_new_shuffled, epochs=EPOCHS, batch_size=BATCH_SIZE)
     print("Fine-tuning complete.")
 
     # 5. Save the updated model
     print(f"Saving updated model to {TEMP_MODEL_PATH}...")
     try:
-        # First, create a backup if MODEL_PATH exists and is a file
         if os.path.isfile(MODEL_PATH):
             print(f"Creating backup of existing model to {BACKUP_MODEL_PATH}")
             shutil.copy2(MODEL_PATH, BACKUP_MODEL_PATH)

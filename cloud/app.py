@@ -7,17 +7,16 @@ import tensorflow as tf
 from flask import Flask, request, jsonify
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
-# Import VGG16 preprocessing specifically
 from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
 from PIL import Image
 from flask_cors import CORS
-import traceback # For better error logging
+import traceback
 
 # --- Configuration ---
-MODEL_FILENAME = 'model.hdf5' # Your trained model file
-IMAGE_WIDTH = 224             # Match training image size
-IMAGE_HEIGHT = 224            # Match training image size
-UPLOAD_FOLDER = 'user_corrections' # Folder for online update images
+MODEL_FILENAME = 'model.hdf5'
+IMAGE_WIDTH = 224            
+IMAGE_HEIGHT = 224            
+UPLOAD_FOLDER = 'user_corrections' 
 
 CLASS_LABELS = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
@@ -37,7 +36,7 @@ loaded_model = None
 def load_app_model():
     """Loads the model into the global variable."""
     global loaded_model
-    if loaded_model is None: # Load only once
+    if loaded_model is None: 
         try:
             print(f"Loading model '{MODEL_FILENAME}'...")
             loaded_model = load_model(MODEL_FILENAME, compile=False)
